@@ -496,7 +496,7 @@ export const listeners = {
             }
         })
 
-        if (!sanhelper.beta) {
+        if (!sanhelper.beta && !sanbridgemode) {
             update.setlisteners(win)
             update.check()
         }
@@ -1194,7 +1194,15 @@ export const listeners = {
         }
 
         ipcMain.on("notify",async (event,notify: Notify,iswebview?: "customiser" | "sspreview" | null,monitorid?: number) => {
-            const config = sanconfig.get()
+            if (sanbridgemode) {
+                log.write(
+                    "INFO",
+                    `[SANBridge] suppressed SAN notification: ${notify.apiname}`
+                )
+                return
+            }
+
+    const config = sanconfig.get()
             
             if (config.get("soundonly")) {
                 if (!iswebview) {
