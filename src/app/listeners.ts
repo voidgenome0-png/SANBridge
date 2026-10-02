@@ -54,7 +54,7 @@ export const listeners = {
     set: (win: BrowserWindow): void => {
         listeners.setexit()
 
-        const sanhelperlog = sanhelper.initlogger(path.join(sanhelper.appdata,"logs"))
+        const sanhelperlog = sanhelper.initlogger(log.directory)
         log.write("INFO",sanhelperlog)
 
         ipcMain.on("appusage",async event => event.reply("appusage",await resourceusage.app()))

@@ -11,20 +11,56 @@ const iconmap = new Map([
     ["EXIT","⚫"]
 ])
 
+const sanbridgemode =
+    process.argv.includes("--sanbridge") ||
+    process.argv.some(arg => arg === "--sanbridge=1")
+
+let warninghandlerregistered = false
+
+const getlogdirectory = (): string => {
+    const directory = sanbridgemode
+        ? path.join(
+            process.env.APPDATA ||
+                path.dirname(sanhelper.appdata),
+            "Achievement Watcher Next",
+            "logs"
+        )
+        : path.join(sanhelper.appdata,"logs")
+
+    if (!fs.existsSync(directory)) {
+        fs.mkdirSync(directory,{ recursive: true })
+    }
+
+    return directory
+}
+
 export const log = {
+    get directory(): string {
+    return getlogdirectory()
+    },
     create: (process: "APP" | "MAIN" | "RENDERER" | "WORKER" | "ERROR") => {
         const format = "{d}/{m}/{y} {h}:{i}:{s}"
     
         transports.console.format = `[${format}]\n[${process}]:{text}\n`
         transports.file.format = `[${format}]\n[${process}]:{text}\n`
 
-        transports.file.resolvePath = () => path.join(sanhelper.appdata,"logs","san.log")
+        transports.file.resolvePath = () => path.join(log.directory,"san.log")
         catchErrors({ showDialog: false })
     },
     clear: () => transports.file.getFile().clear(),
     init: (process: "APP" | "MAIN" | "RENDERER" | "WORKER" | "ERROR") => {
         log.create(process)
+        if (!warninghandlerregistered) {
+            warninghandlerregistered = true
 
+            globalThis.process.on("warning",warning => {
+                log.write(
+                    "WARN",
+                    `${warning.name}: ${warning.message}` +
+                    `${warning.stack ? `\n${warning.stack}` : ""}`
+                )
+            })
+        }
         // Rust-based log files must be created before game tracking starts to prevent continuous missing file error logging
         const logfiles = [
             "steamworks",
@@ -36,7 +72,7 @@ export const log = {
 
             for (const logfile of logfiles) {
                 try {
-                    fs.writeFileSync(path.join(sanhelper.appdata,"logs",`${logfile}.log`),"")
+                    fs.writeFileSync(path.join(log.directory,`${logfile}.log`),"")
                     log.write("INFO",`"${logfile}.log" created successfully`)
                 } catch (err) {
                     log.write("ERROR",`Error creating "${logfile}.log": ${(err as Error).stack || (err as Error).message}`)
@@ -64,7 +100,7 @@ export const log = {
         })()
     },
     get open(): Promise<string> {
-        return shell.openPath(path.join(sanhelper.appdata,"logs"))
+        return shell.openPath(log.directory)
     },
     clearlogfile: (logspath: string,logfile: string) => {
         const filepath = path.join(logspath,logfile)
@@ -79,7 +115,7 @@ export const log = {
     backup: (config: any) => {
         try {
             const { lognum } = config.store
-            const logspath = path.join(sanhelper.appdata,"logs")
+            const logspath = log.directory
             const logfiles = fs.readdirSync(logspath).filter(file => file.endsWith("_san.log")).sort()
 
             if (!Number.isFinite(lognum)) return log.write("WARN",`No. of logs is not valid (${lognum}) - skipping backup...`)
