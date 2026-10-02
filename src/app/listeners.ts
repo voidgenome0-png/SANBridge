@@ -290,7 +290,12 @@ export const listeners = {
         })
 
         ipcMain.on("worker",(event,args) => console.log(JSON.parse(args)))
-
+         ipcMain.on("sanbridge-unlock",(event,payload) => {
+            log.write(
+                "INFO",
+                `[SANBridge] achievement event: ${JSON.stringify(payload)}`
+            )
+        })       
         const validateworker = (manualrelease?: boolean): Promise<string> => {
             return new Promise<string>((resolve,reject) => {
                 if (worker) {
