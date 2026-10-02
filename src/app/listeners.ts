@@ -13,6 +13,7 @@ import { screenshot } from "./screenshots"
 import { audio } from "./audio"
 import { resourceusage } from "./resourceusage"
 import { troubleshooter } from "./troubleshooter"
+import { sanbridgepipe } from "./sanbridgepipe"
 
 let appid: number = 0
 let gameid: number = 0 // RetroAchievements GameID
@@ -298,12 +299,16 @@ export const listeners = {
         })
 
         ipcMain.on("worker",(event,args) => console.log(JSON.parse(args)))
-         ipcMain.on("sanbridge-unlock",(event,payload) => {
+        ipcMain.on("sanbridge-unlock",(event,payload) => {
+            if (!sanbridgemode) return
+
             log.write(
                 "INFO",
                 `[SANBridge] achievement event: ${JSON.stringify(payload)}`
             )
-        })       
+
+            void sanbridgepipe.send(payload)
+        })     
         const validateworker = (manualrelease?: boolean): Promise<string> => {
             return new Promise<string>((resolve,reject) => {
                 if (worker) {
@@ -371,6 +376,8 @@ export const listeners = {
         })
 
         ipcMain.on("releasing",async (event,gamename: string,value: boolean) => {
+            if (sanbridgemode) return
+
             const { result } = await troubleshooter.data(worker).catch(() => ({ result: [] }))
             gamedisplaystate.steam = { ...gamedisplaystate.steam, gamename, releasing: value, issues: !!result.length }
             
@@ -379,6 +386,8 @@ export const listeners = {
         }) // Adds visual "releasing" hint in UI
 
         ipcMain.on("activeprocesses",async (event,appid: number,activeprocesses: boolean,linkedgame: string | null) => {
+            if (sanbridgemode) return
+
             win.webContents.send("activeprocesses",appid,activeprocesses,linkedgame ?? undefined) // Handles UI hint for active processes
             
             const { result } = await troubleshooter.data(worker).catch(() => ({ result: [] }))
@@ -599,6 +608,8 @@ export const listeners = {
         ipcMain.on("workeractive",(event,value: boolean) => win.webContents.send("workeractive",value))
 
         ipcMain.on("showtrack",(event,gamename: string,ra?: { icon: string, gameartlibhero: string }) => {
+            if (sanbridgemode) return
+
             const config = sanconfig.get()
             const { scaleFactor }: Monitor = config.get("monitors").find(monitor => monitor.primary)!
 

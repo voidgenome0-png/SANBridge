@@ -540,12 +540,13 @@ const startsan = async (appinfo: AppInfo) => {
         
                             log.write("INFO",`Achievement unlocked: ${JSON.stringify(achievement)}`)
                             ipcRenderer.send("sanbridge-unlock",{
-                            version: 1,
-                            source: "official-steam",
-                            appId: appid,
-                            apiName: achievement.apiname,
-                            displayName: achievement.name,
-                            unlockTime: new Date(unlocktime).toISOString()
+                                version: 1,
+                                type: "achievement-unlocked",
+                                source: "official-steam",
+                                appId: appid,
+                                apiName: achievement.apiname,
+                                displayName: achievement.name,
+                                unlockTime: new Date(unlocktime).toISOString()
                             })
                             const type = achievement.percent <= rarity ? "rare" : (trophymode && (achievement.percent <= semirarity && achievement.percent > rarity) ? "semi" : "main")
                 
