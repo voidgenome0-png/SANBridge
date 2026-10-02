@@ -31,6 +31,10 @@ window.localised = new Map<string,LocalisedObj>()
 const pids = new Set<number>()
 let releasetimer: NodeJS.Timeout | null = null
 let processing = false
+const SANBRIDGE_EXCLUDED_APPIDS = new Set<number>([
+    431960 // Wallpaper Engine
+])
+
 
 const statsobj: StatsObj = {
     appid: 0,
@@ -176,12 +180,34 @@ const startidle = () => {
         let exclusionlogged = false
         let invalidappidlogged = false
         let waitingforsteamlogged = false
-        
+        let sanbridgeexclusionlogged = false
+
         const timer = setInterval(() => {
             const { pollrate, initdelay, releasedelay, maxretries, userust, debug, noiconcache, exclusions, inclusionlist } = sanconfig.get().store
             const { appid, gamename } = sanhelper.gameinfo as AppInfo
-            
-            if (!appid) return ipcRenderer.send("activeprocesses",0,false) // Clears "waiting" attribute in `renderer.ts` if present
+
+            if (!appid) {
+                sanbridgeexclusionlogged = false
+                return ipcRenderer.send("activeprocesses",0,false)
+            }
+            if (
+                sanbridgemode &&
+                SANBRIDGE_EXCLUDED_APPIDS.has(appid)
+            ) {
+                if (!sanbridgeexclusionlogged) {
+                    log.write(
+                        "INFO",
+                        `SANBridge ignored excluded Steam application: ` +
+                        `${gamename || "Unknown"} (AppID ${appid})`
+                    )
+
+                    sanbridgeexclusionlogged = true
+                }
+
+                return ipcRenderer.send("activeprocesses",0,false)
+            }
+
+            sanbridgeexclusionlogged = false
             
             // If `installdir === null`, current AppID is invalid (i.e. a non-Steam game/application)
             if (lastknowngame && appid === lastknowngame.appid && !lastknowngame.installdir) {
@@ -257,6 +283,18 @@ const startidle = () => {
 
 const startsan = async (appinfo: AppInfo) => {
     try {
+        if (
+            sanbridgemode &&
+            SANBRIDGE_EXCLUDED_APPIDS.has(appinfo.appid)
+        ) {
+            log.write(
+                "WARN",
+                `SANBridge refused to initialize excluded ` +
+                `AppID ${appinfo.appid}`
+            )
+            return
+        }
+
         window.localised.clear()
 
         const { appid, gamename, pollrate, maxretries, userust, noiconcache } = appinfo
