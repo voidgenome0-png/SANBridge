@@ -1,9 +1,26 @@
 import { app } from "electron"
 import path from "path"
+import fs from "fs"
 
-if (process.platform === "win32" && process.env.npm_lifecycle_event !== "dev") {
-    const appdir = path.join(process.env.localappdata!,"Programs",app.name)
-    process.cwd() !== appdir && process.chdir(appdir)
+const sanbridgemode = process.argv.includes("--sanbridge")
+
+if (
+    process.platform === "win32" &&
+    process.env.npm_lifecycle_event !== "dev" &&
+    !sanbridgemode
+) {
+    const appdir = path.join(
+        process.env.LOCALAPPDATA || "",
+        "Programs",
+        app.name
+    )
+
+    if (
+        fs.existsSync(appdir) &&
+        process.cwd() !== appdir
+    ) {
+        process.chdir(appdir)
+    }
 }
 
 import fs from "fs"
