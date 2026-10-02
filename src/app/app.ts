@@ -23,7 +23,6 @@ if (
     }
 }
 
-import fs from "fs"
 import asar from "@electron/asar"
 import { __root, sanhelper } from "./sanhelper"
 import { sanconfig } from "./config"
