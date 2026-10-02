@@ -149,7 +149,15 @@ ipcRenderer.on("appid",() => ipcRenderer.send("appid",workerinfo))
 // `lastknowngame` var in `listeners.ts` is passed via `BrowserWindow.webPreferences.additionalArguments`, so current AppID/last install dir can be verified before re-initialising Steamworks for the same game in `startsan()`
 // This ensures SAN does not re-initialise an AppID for a game that has now closed, which would prevent Steam from resetting `RunningAppID` to 0 in the Windows registry
 const lastknowngame: LastKnownGame | null = worker.getadditionalargs(process.argv.find(arg => arg.startsWith("--lastknowngame="))) as LastKnownGame | null
+const sanbridgemode =
+    worker.getadditionalargs(
+        process.argv.find(arg => arg.startsWith("--sanbridge="))
+    ) === 1
 
+sanbridgemode && log.write(
+    "INFO",
+    "SANBridge mode enabled: SAN notifications and webhooks are disabled"
+)
 // `init` is only sent via "stats" IPC event when `statwin` spawns
 ipcRenderer.on("stats",(event,init?: boolean) => ipcRenderer.send("stats",statsobj,init))
 
@@ -552,8 +560,16 @@ const startsan = async (appinfo: AppInfo) => {
                                 unlocktime: new Date(unlocktime).toISOString()
                             }
         
-                            ;["notify","sendwebhook"].forEach(cmd => ipcRenderer.send(cmd,notify,undefined,themeswitch?.[1].src))
-        
+                            if (!sanbridgemode) {
+                                ;["notify","sendwebhook"].forEach(
+                                    cmd => ipcRenderer.send(
+                                        cmd,
+                                        notify,
+                                        undefined,
+                                        themeswitch?.[1].src
+                                    )
+                                )
+                            }
                             ;(async () => {
                                 statsobj.achievements = !config.get("steamlang") ? live : await Promise.all(
                                     live.map(async achievement => {
@@ -604,8 +620,16 @@ const startsan = async (appinfo: AppInfo) => {
                                 unlocktime: new Date(Date.now()).toISOString()
                             }
             
-                            ;["notify","sendwebhook"].forEach(cmd => ipcRenderer.send(cmd,platnotify,undefined,themeswitch?.[1].src))
-        
+                            if (!sanbridgemode) {
+                                ;["notify","sendwebhook"].forEach(
+                                    cmd => ipcRenderer.send(
+                                        cmd,
+                                        platnotify,
+                                        undefined,
+                                        themeswitch?.[1].src
+                                    )
+                                )
+                            }
                             hasshown = true
                         }
                     } finally {

@@ -1,4 +1,5 @@
 import { app, ipcMain, BrowserWindow, Tray, Menu, nativeImage, dialog, Notification, screen, globalShortcut, BrowserWindowConstructorOptions, NotificationConstructorOptions, clipboard } from "electron"
+const sanbridgemode = app.commandLine.hasSwitch("sanbridge")
 import path from "path"
 import fs from "fs"
 import Store from "electron-store"
@@ -236,7 +237,8 @@ export const listeners = {
         const createworker = (id: number,lastknowngame: LastKnownGame | null,ra?: boolean) => {
             const prefix = ra ? "RA" : ""
             const args = !ra ? [
-                `--lastknowngame=${lastknowngame ? JSON.stringify(lastknowngame) : ""}` // "Worker" parses `lastknowngame` arg on spawn
+                `--lastknowngame=${lastknowngame ? JSON.stringify(lastknowngame) : ""}`,
+                `--sanbridge=${sanbridgemode ? 1 : 0}`
             ] : []
 
             const worker = new BrowserWindow({
