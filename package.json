@@ -9,6 +9,7 @@
         "dev": "npx tsc && electron ./dist/app/app.js --ozone-platform=x11",
         "win": "npx tsc --build --clean && npx tsc && electron-builder --win=nsis --x64",
         "win:beta": "npx tsc --build --clean && npx tsc && electron-builder --win=nsis --x64 --config beta.json",
+        "win:portable": "npx tsc --build --clean && npx tsc && electron-builder --win --x64 --dir --publish never",
         "linux": "npx tsc --build --clean && npx tsc && electron-builder --linux",
         "linux:beta": "npx tsc --build --clean && npx tsc && electron-builder --linux --config beta.json",
         "publish": "npx tsc --build --clean && npx tsc && electron-builder -p always",

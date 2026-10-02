@@ -27,12 +27,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build original Windows application
-        run: npm run win -- --publish never
+      - name: Build portable SANBridge
+        run: npm run win:portable
 
-      - name: Upload Windows installer
+      - name: Upload portable SANBridge
         uses: actions/upload-artifact@v4
         with:
-          name: SANBridge-Baseline-Windows
-          path: _release/*.exe
+          name: SANBridge-Portable-Windows-x64
+          path: _release/win-unpacked/**
           if-no-files-found: error
