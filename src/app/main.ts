@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, nativeTheme } from "electron"
+const sanbridgemode = app.commandLine.hasSwitch("sanbridge")
 import path from "path"
 import { sanhelper, __root } from "./sanhelper"
 import { log } from "./log"
@@ -53,8 +54,8 @@ export const main = async (starttime: string) => {
             minimizable: false,
             maximizable: true,
             resizable: true,
-            show: !config.get("startmin"),
-            skipTaskbar: false,
+            show: sanbridgemode ? false : !config.get("startmin"),
+            skipTaskbar: sanbridgemode,
             webPreferences: {
                 nodeIntegration: true,
                 contextIsolation: false,
@@ -81,10 +82,27 @@ export const main = async (starttime: string) => {
         win.once("ready-to-show",() => {
             listeners.set(win)
             ipcMain.emit("validateworker")
-            ipcMain.emit("shortcut",null,!config.get("noshortcuts"))
 
-            for (const type of Object.keys(sanconfig.defaultextwins) as ExtWins[]) {
-                config.get(`${type}win`) && ipcMain.emit(`${type}win`,null,true)
+            if (!sanbridgemode) {
+                ipcMain.emit(
+                    "shortcut",
+                    null,
+                    !config.get("noshortcuts")
+                )
+
+                for (
+                    const type of Object.keys(
+                        sanconfig.defaultextwins
+                    ) as ExtWins[]
+                ) {
+                    config.get(`${type}win`) &&
+                        ipcMain.emit(`${type}win`,null,true)
+                }
+            } else {
+                log.write(
+                    "INFO",
+                    "[SANBridge] headless main window initialized"
+                )
             }
         })
 

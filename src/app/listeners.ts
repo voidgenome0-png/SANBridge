@@ -62,7 +62,9 @@ export const listeners = {
 
         sanconfig.get().store.logresourceusage && resourceusage.init()
 
-        app.on("second-instance",() => win.show())
+        app.on("second-instance",() => {
+        if (!sanbridgemode) win.show()
+        })
 
         // Prevent page zoom
         win.webContents.on("before-input-event",(event,input) => ((input.code === "Minus" || input.code === "Equal") && (input.control || input.meta)) && event.preventDefault())
@@ -93,11 +95,15 @@ export const listeners = {
         win.on("close",() => savewindowstate(win))
 
         let tray: Tray | null = null
-        tray = new Tray(path.join(__root,"img","sanlogo_idle.png"))
-
+        if (!sanbridgemode) {
+            tray = new Tray(
+                path.join(__root,"img","sanlogo_idle.png")
+            )
+        }
         let suspended = false
 
-        const updatetray = async (tray: Tray,gamename?: string | null,achnum?: number,releasing?: boolean,issues?: boolean,betaunsupported?: boolean) => {
+        const updatetray = async (tray: Tray | null,gamename?: string | null,achnum?: number,releasing?: boolean,issues?: boolean,betaunsupported?: boolean) => {
+            if (!tray) return
             tray && tray.removeAllListeners()
 
             tray.setToolTip(`Steam Achievement Notifier (V${sanhelper.version})`)
