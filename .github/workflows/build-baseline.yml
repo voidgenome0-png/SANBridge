@@ -1,10 +1,10 @@
-name: Build SANBridge Baseline
+name: Build SANBridge V2
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - sanbridge-headless-v1
+      - sanbridge-headless-v2
 
 jobs:
   build-windows:

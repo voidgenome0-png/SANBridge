@@ -27,9 +27,6 @@
         "rimraf": "5.0.1",
         "typescript": "^6.0.2"
     },
-    "dependencies": {
-        "@types/node": "*"
-    },
     "engines": {
         "node": ">= 14"
     },
