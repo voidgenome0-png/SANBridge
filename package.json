@@ -1,61 +1,31 @@
 {
     "private": true,
-    "name": "steamachievementnotifierv1.9",
-    "author": "SteamAchievementNotifier",
-    "version": "1.9.47",
-    "description": "Steam Achievement Notifier (V1.9)",
-    "main": "dist/app/app.js",
+    "name": "sanbridge",
+    "author": "SteamAchievementNotifier / SANBridge contributors",
+    "version": "1.9.47-sanbridge.2",
+    "description": "Headless official-Steam achievement bridge for Achievement Watcher Next",
+    "main": "dist/bridge/app.js",
     "scripts": {
-        "dev": "npx tsc && electron ./dist/app/app.js --ozone-platform=x11",
-        "win": "npx tsc --build --clean && npx tsc && electron-builder --win=nsis --x64",
-        "win:beta": "npx tsc --build --clean && npx tsc && electron-builder --win=nsis --x64 --config beta.json",
-        "win:portable": "npx tsc --build --clean && npx tsc && electron-builder --win --x64 --dir --publish never",
-        "linux": "npx tsc --build --clean && npx tsc && electron-builder --linux",
-        "linux:beta": "npx tsc --build --clean && npx tsc && electron-builder --linux --config beta.json",
-        "publish": "npx tsc --build --clean && npx tsc && electron-builder -p always",
-        "postinstall": "patch-package"
+        "clean": "npx tsc --build tsconfig.bridge.json --clean",
+        "build": "npx tsc -p tsconfig.bridge.json",
+        "dev": "npm run build && electron ./dist/bridge/app.js --sanbridge",
+        "win:portable": "npm run clean && npm run build && electron-builder --win --x64 --dir --publish never"
     },
     "repository": {
-        "url": "https://github.com/SteamAchievementNotifier/SteamAchievementNotifier"
+        "url": "https://github.com/voidgenome0-png/SANBridge"
     },
     "bugs": {
-        "url": "https://github.com/SteamAchievementNotifier/SteamAchievementNotifier/issues"
+        "url": "https://github.com/voidgenome0-png/SANBridge/issues"
     },
-    "homepage": "https://github.com/SteamAchievementNotifier/SteamAchievementNotifier#readme",
+    "homepage": "https://github.com/voidgenome0-png/SANBridge#readme",
     "devDependencies": {
-        "@types/fs-extra": "^11.0.4",
-        "@types/sortablejs": "^1.15.8",
         "electron": "^44.2.0",
         "electron-builder": "^26.15.7",
-        "patch-package": "^8.0.1",
         "typescript": "^6.0.2"
     },
     "dependencies": {
-        "@electron/asar": "^3.3.1",
-        "@jaames/iro": "^5.5.2",
-        "@retroachievements/api": "^2.4.0",
-        "adm-zip": "^0.6.0",
-        "electron-log": "4.4.8",
-        "electron-store": "8.2.0",
-        "electron-updater": "^6.1.7",
-        "fs-extra": "^11.2.0",
-        "icojs": "^0.22.1",
-        "jpeg-js": "^0.4.4",
         "sanhelper.rs": "./deps/sanhelper.rs",
-        "sanwatcher.rs": "./deps/sanwatcher.rs",
-        "simple-vdf": "^1.1.1",
-        "sortablejs": "^1.15.6",
-        "steam-game-path": "^2.3.0",
-        "steamworks.js": "./deps/steamworks.js",
-        "tippy.js": "^6.3.7"
-    },
-    "overrides": {
-        "steam-game-path": {
-            "steam-appticket": "^2.0.1",
-            "steam-user": "^5.2.3"
-        },
-        "adm-zip": "^0.6.0",
-        "brace-expansion": "^5.0.8"
+        "steamworks.js": "./deps/steamworks.js"
     },
     "build": {
         "appId": "com.SteamAchievementNotifier.Jackson0ne",
@@ -64,56 +34,22 @@
             "output": "_release"
         },
         "files": [
-            "deps/HackTimer.min.js",
-            "dist/**/*",
-            "fonts/**/*",
-            "icon/**/*",
-            "img/**/*",
-            "notify/**/*",
-            "sound/**/*",
-            {
-                "from": "img",
-                "to": "img",
-                "filter": [
-                    "**/*"
-                ]
-            }
+            "dist/bridge/**/*",
+            "package.json",
+            "!node_modules/steamworks.js/dist/linux64/**/*",
+            "!node_modules/steamworks.js/dist/win64/*.lib",
+            "!node_modules/sanhelper.rs/*.linux-*.node"
         ],
-        "extraResources": [
-            {
-                "from": "img",
-                "to": "img",
-                "filter": [
-                    "**/*"
-                ]
-            }
+        "asarUnpack": [
+            "node_modules/steamworks.js/dist/win64/**/*",
+            "node_modules/sanhelper.rs/*.node"
         ],
+        "electronLanguages": ["en-US"],
         "npmRebuild": false,
-        "publish": [
-            {
-                "provider": "github",
-                "owner": "SteamAchievementNotifier",
-                "repo": "SteamAchievementNotifier",
-                "vPrefixedTagName": false
-            }
-        ],
         "win": {
-            "target": "nsis",
+            "target": "dir",
             "icon": "img/sanlogo.ico"
         },
-        "nsis": {
-            "oneClick": true,
-            "artifactName": "SteamAchievementNotifier_V${version}.exe",
-            "createDesktopShortcut": false,
-            "deleteAppDataOnUninstall": true,
-            "shortcutName": "Steam Achievement Notifier (V1.9)"
-        },
-        "linux": {
-            "target": "AppImage",
-            "artifactName": "SteamAchievementNotifier_V${version}.AppImage",
-            "icon": "img/sanlogo.png",
-            "category": "Utility"
-        },
-        "afterPack": "./afterpack.js"
+        "afterPack": "./afterpack-bridge.js"
     }
 }
