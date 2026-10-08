@@ -31,7 +31,7 @@
         "node": ">= 14"
     },
     "scripts": {
-        "build": "npm run types && node build --release",
+        "build": "node build-native.js",
         "build:debug": "node build",
         "prune": "rimraf dist target client.d.ts",
         "format": "cargo clippy --fix --allow-staged && cargo fmt",

@@ -2,7 +2,8 @@ import { app } from "electron"
 import { getAppInfo } from "sanhelper.rs"
 import { init } from "steamworks.js"
 import { log } from "./log"
-import { AchievementProgress, bridgePipe, UnlockEvent } from "./pipe"
+import { AchievementProgress, bridgePipe, ProgressEvent, UnlockEvent } from "./pipe"
+import { classifyStoredAchievement } from "./storedAchievement"
 
 type SteamAchievement = {
     apiName: string
@@ -18,11 +19,6 @@ const EXCLUDED_APP_IDS = new Set<number>([
 
 const DETECTION_INTERVAL_MS = 1000
 const GAME_EXIT_GRACE_MS = 15000
-const ACHIEVEMENT_POLL_MS = Math.max(
-    100,
-    Math.min(2000,Number(process.env.SANBRIDGE_POLL_MS) || 250)
-)
-
 app.disableHardwareAcceleration()
 app.commandLine.appendSwitch("disable-gpu")
 app.commandLine.appendSwitch("disable-extensions")
@@ -31,9 +27,9 @@ app.commandLine.appendSwitch("disable-background-networking")
 let shuttingDown = false
 let activeAppId = 0
 let detectionTimer: NodeJS.Timeout | null = null
-let achievementTimer: NodeJS.Timeout | null = null
 let lifecycleTimer: NodeJS.Timeout | null = null
 let gameMissingSince = 0
+let achievementCallback: { disconnect(): void } | null = null
 
 const snapshot = (client: SteamClient,names: string[]): SteamAchievement[] => names.map(apiName => ({
     apiName,
@@ -53,11 +49,11 @@ const progress = (achievements: SteamAchievement[]): AchievementProgress => {
 
 const stopTimers = (): void => {
     if (detectionTimer) clearInterval(detectionTimer)
-    if (achievementTimer) clearInterval(achievementTimer)
     if (lifecycleTimer) clearInterval(lifecycleTimer)
     detectionTimer = null
-    achievementTimer = null
     lifecycleTimer = null
+    if (achievementCallback) achievementCallback.disconnect()
+    achievementCallback = null
 }
 
 const fail = (error: unknown): void => {
@@ -78,8 +74,10 @@ const startTracking = (appId: number,gameName: string): void => {
     }
 
     const names = client.achievement.getAchievementNames()
-    let previous = snapshot(client,names)
-    const initialProgress = progress(previous)
+    const initialProgress = progress(snapshot(client,names))
+    const knownNames = new Set(names)
+    const completedThisSession = new Set<string>()
+    const lastProgress = new Map<string,string>()
 
     log.info(
         `tracking ${initialProgress.total} achievement(s); ` +
@@ -108,52 +106,80 @@ const startTracking = (appId: number,gameName: string): void => {
         }
     },DETECTION_INTERVAL_MS)
 
-    let polling = false
-    achievementTimer = setInterval(() => {
-        if (polling || shuttingDown) return
-        polling = true
-
+    achievementCallback = client.callback.registerUserAchievementStored(value => {
+        if (shuttingDown) return
         try {
-            const current = snapshot(client,names)
-            const newlyUnlocked = current.filter((achievement,index) =>
-                achievement.unlocked && !previous[index]?.unlocked
-            )
-
-            if (newlyUnlocked.length) {
-                const currentProgress = progress(current)
-                const unlockTime = new Date().toISOString()
-
-                for (const achievement of newlyUnlocked) {
-                    const event: UnlockEvent = {
-                        version: 1,
-                        type: "achievement-unlocked",
-                        source: "official-steam",
-                        appId,
-                        apiName: achievement.apiName,
-                        displayName: achievement.displayName,
-                        unlockTime,
-                        eventId: `official-steam:${appId}:${achievement.apiName}:${unlockTime}`,
-                        achievementProgress: currentProgress
-                    }
-
-                    log.info(
-                        `achievement unlocked: "${achievement.displayName}" ` +
-                        `(${currentProgress.unlocked}/${currentProgress.total}, ${currentProgress.percent}%)`
-                    )
-
-                    void bridgePipe.send(event).then(sent => {
-                        if (sent) log.info(`achievement event sent to AW Next: ${achievement.apiName}`)
-                    })
-                }
+            const apiName = String(value.achievementName || "").trim()
+            if (!apiName || !knownNames.has(apiName)) {
+                log.warn(`UserAchievementStored_t ignored unknown achievement API name: ${apiName || "(empty)"}`)
+                return
             }
 
-            previous = current
+            const update = classifyStoredAchievement(
+                Number(value.currentProgress),
+                Number(value.maxProgress)
+            )
+            const observedAt = new Date().toISOString()
+
+            if (update.kind === "completion") {
+                if (completedThisSession.has(apiName)) {
+                    log.debug(`duplicate completion callback suppressed: ${apiName}`)
+                    return
+                }
+                completedThisSession.add(apiName)
+
+                const displayName = client.achievement.getAchievementDisplayAttribute(apiName,"name") || apiName
+                const currentProgress = progress(snapshot(client,names))
+                const event: UnlockEvent = {
+                    version: 1,
+                    type: "achievement-unlocked",
+                    source: "official-steam",
+                    appId,
+                    apiName,
+                    displayName,
+                    unlockTime: observedAt,
+                    eventId: `official-steam:${appId}:${apiName}:${observedAt}`,
+                    achievementProgress: currentProgress
+                }
+
+                log.info(
+                    `achievement completed: "${displayName}" ` +
+                    `(${currentProgress.unlocked}/${currentProgress.total}, ${currentProgress.percent}%)`
+                )
+                void bridgePipe.send(event).then(sent => {
+                    if (sent) log.info(`achievement event sent to AW Next: ${apiName}`)
+                })
+                return
+            }
+
+            const progressKey = `${update.current}/${update.max}`
+            if (lastProgress.get(apiName) === progressKey) {
+                log.debug(`duplicate progress callback suppressed: ${apiName} ${progressKey}`)
+                return
+            }
+            lastProgress.set(apiName,progressKey)
+
+            const event: ProgressEvent = {
+                version: 1,
+                type: "achievement-progress",
+                source: "official-steam",
+                appId,
+                apiName,
+                currentProgress: update.current,
+                maxProgress: update.max,
+                percent: update.percent,
+                observedAt,
+                eventId: `official-steam:${appId}:${apiName}:progress:${update.current}:${update.max}:${observedAt}`
+            }
+
+            log.info(`achievement progress: ${apiName} ${update.current}/${update.max} (${update.percent}%)`)
+            void bridgePipe.send(event).then(sent => {
+                if (sent) log.info(`progress event sent to AW Next: ${apiName}`)
+            })
         } catch (error) {
-            log.error(`achievement poll failed: ${error instanceof Error ? error.stack || error.message : error}`)
-        } finally {
-            polling = false
+            log.error(`UserAchievementStored_t handling failed: ${error instanceof Error ? error.stack || error.message : error}`)
         }
-    },ACHIEVEMENT_POLL_MS)
+    })
 }
 
 const detectGame = (): void => {
@@ -185,7 +211,7 @@ const shutdown = (reason: string): void => {
 const main = (): void => {
     log.info(
         `headless bridge ready; pipe=${bridgePipe.path}; ` +
-        `poll=${ACHIEVEMENT_POLL_MS}ms; log=${log.file}`
+        `achievement-source=UserAchievementStored_t; log=${log.file}`
     )
 
     detectGame()

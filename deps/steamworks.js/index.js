@@ -31,9 +31,9 @@ module.exports.init = (appId) => {
     internalInit(appId)
 
     clearInterval(runCallbacksInterval)
-    // SANBridge only polls achievement state and does not render the Steam overlay.
-    // Ten callback ticks per second keeps Steam state current while avoiding the
-    // unnecessary 30 Hz wake-up rate used by the full SAN interface.
+    // SANBridge is callback-only and does not render the Steam overlay. Ten callback
+    // ticks per second bounds UserAchievementStored_t delivery latency near 100 ms
+    // without the unnecessary 30 Hz wake-up rate used by the full SAN interface.
     const callbackHz = Math.max(1,Math.min(30,Number(process.env.SANBRIDGE_CALLBACK_HZ) || 10))
     runCallbacksInterval = setInterval(runCallbacks, 1000 / callbackHz)
 
@@ -76,6 +76,3 @@ module.exports.electronEnableSteamOverlay = (disableEachFrameInvalidation) => {
         electron.app.on('browser-window-created', (_, bw) => attachFrameInvalidator(bw))
     }
 }
-
-const SteamCallback = nativeBinding.callback.SteamCallback
-module.exports.SteamCallback = SteamCallback

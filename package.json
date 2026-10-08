@@ -2,14 +2,15 @@
     "private": true,
     "name": "sanbridge",
     "author": "SteamAchievementNotifier / SANBridge contributors",
-    "version": "1.9.47-sanbridge.2",
+    "version": "1.9.47-sanbridge.3",
     "description": "Headless official-Steam achievement bridge for Achievement Watcher Next",
     "main": "dist/bridge/app.js",
     "scripts": {
         "clean": "npx tsc --build tsconfig.bridge.json --clean",
+        "build:native": "npm --prefix deps/steamworks.js run build",
         "build": "npx tsc -p tsconfig.bridge.json",
         "dev": "npm run build && electron ./dist/bridge/app.js --sanbridge",
-        "win:portable": "npm run clean && npm run build && electron-builder --win --x64 --dir --publish never"
+        "win:portable": "npm run build:native && npm run clean && npm run build && electron-builder --win --x64 --dir --publish never"
     },
     "repository": {
         "url": "https://github.com/voidgenome0-png/SANBridge"
@@ -36,6 +37,12 @@
         "files": [
             "dist/bridge/**/*",
             "package.json",
+            "!node_modules/steamworks.js/src/**/*",
+            "!node_modules/steamworks.js/target/**/*",
+            "!node_modules/steamworks.js/Cargo.toml",
+            "!node_modules/steamworks.js/Cargo.lock",
+            "!node_modules/steamworks.js/build.rs",
+            "!node_modules/steamworks.js/build-native.js",
             "!node_modules/steamworks.js/dist/linux64/**/*",
             "!node_modules/steamworks.js/dist/win64/*.lib",
             "!node_modules/sanhelper.rs/*.linux-*.node"

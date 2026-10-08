@@ -23,7 +23,22 @@ export type UnlockEvent = {
     achievementProgress: AchievementProgress
 }
 
-const send = (payload: UnlockEvent): Promise<boolean> => new Promise(resolve => {
+export type ProgressEvent = {
+    version: 1
+    type: "achievement-progress"
+    source: "official-steam"
+    appId: number
+    apiName: string
+    currentProgress: number
+    maxProgress: number
+    percent: number
+    observedAt: string
+    eventId: string
+}
+
+export type BridgeEvent = UnlockEvent | ProgressEvent
+
+const send = (payload: BridgeEvent): Promise<boolean> => new Promise(resolve => {
     let settled = false
     const finish = (value: boolean) => {
         if (settled) return
