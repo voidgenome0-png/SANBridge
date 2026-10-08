@@ -1,0 +1,11 @@
+cd "C:\path\to\your\git\folder"
+
+git status
+git branch --show-current
+git add --all
+git commit -m "Update SANBridge files"
+git push origin sanbridge-headless-v2
+
+
+
+git push --force-with-lease origin sanbridge-headless-v2
